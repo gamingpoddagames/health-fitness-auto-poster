@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Health & Fitness Facebook Auto-Poster
-Runs on GitHub Actions - Fully Automatic
+FitLife Daily Facebook Auto-Poster
+Posts: 2 Reels + 3 Image Posts Daily
+Automatically shares all posts to Stories
 """
 
 import os
@@ -24,6 +25,9 @@ POSTS_FILE = "posts.csv"
 LOG_FILE = "posted_log.txt"
 BASE_URL = "https://graph.facebook.com/v19.0"
 
+# Post schedule: 2 reels + 3 images = 5 posts daily
+POST_TYPES = ['reel', 'reel', 'image', 'image', 'image']  # 2 reels, 3 images
+
 # ============================================
 # GIT HELPER FUNCTIONS
 # ============================================
@@ -40,19 +44,15 @@ def git_pull():
 def git_push():
     """Push changes to GitHub"""
     try:
-        # Add files
         subprocess.run(["git", "add", LOG_FILE, POSTS_FILE], capture_output=True)
         
-        # Check if there are changes
         result = subprocess.run(["git", "diff", "--staged", "--quiet"], 
                                capture_output=True)
         
         if result.returncode != 0:
-            # There are changes to commit
             subprocess.run(["git", "commit", "-m", f"📊 Update logs {datetime.now().strftime('%Y-%m-%d %H:%M')} [skip ci]"], 
                           capture_output=True)
             
-            # Push with retry
             for attempt in range(3):
                 push_result = subprocess.run(
                     ["git", "push", "origin", "main", "--force-with-lease"],
@@ -63,7 +63,6 @@ def git_push():
                     return True
                 else:
                     print(f"⚠️ Push attempt {attempt + 1} failed. Retrying...")
-                    # Pull latest before retry
                     git_pull()
                     time.sleep(2)
             
@@ -78,7 +77,7 @@ def git_push():
         return False
 
 # ============================================
-# CORE FUNCTIONS
+# FACEBOOK POSTING FUNCTIONS
 # ============================================
 
 def load_posts():
@@ -110,63 +109,150 @@ def mark_as_posted(post_id):
         f.write(f"{post_id}\n")
         f.flush()
 
-def post_text(page_id, token, message):
-    """Post plain text to Facebook Page"""
-    url = f"{BASE_URL}/{page_id}/feed"
-    payload = {
-        "message": message,
-        "access_token": token
-    }
+def get_next_post_by_type(posts, posted_ids, post_type):
+    """
+    Get the next unposted post of a specific type
+    reel = has video_url
+    image = has image_url
+    """
+    for post in posts:
+        post_id = post.get('id', '')
+        if post_id in posted_ids:
+            continue
+        
+        if post_type == 'reel' and post.get('video_url', '').strip():
+            return post
+        elif post_type == 'image' and post.get('image_url', '').strip() and not post.get('video_url', '').strip():
+            return post
     
+    return None
+
+def post_to_facebook(page_id, token, content, image_url=None, video_url=None):
+    """
+    Post to Facebook - handles text, image, and video
+    Returns: (success, post_id)
+    """
     try:
+        if video_url:
+            # Post as Reel/Video
+            print("🎬 Posting as REEL...")
+            url = f"{BASE_URL}/{page_id}/videos"
+            payload = {
+                "title": content[:60],
+                "description": content,
+                "file_url": video_url,
+                "access_token": token,
+                "published": "true",
+                "content_category": "FITNESS"
+            }
+            response = requests.post(url, data=payload, timeout=60)
+            
+            if response.status_code == 200:
+                post_id = response.json().get('id')
+                print(f"✅ Reel posted! ID: {post_id}")
+                return True, post_id
+            else:
+                error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+                print(f"❌ Reel failed: {error_msg}")
+                return False, None
+                
+        elif image_url:
+            # Post as Image
+            print("🖼️ Posting as IMAGE...")
+            url = f"{BASE_URL}/{page_id}/photos"
+            payload = {
+                "url": image_url,
+                "caption": content,
+                "access_token": token,
+                "published": "true"
+            }
+            response = requests.post(url, data=payload, timeout=30)
+            
+            if response.status_code == 200:
+                post_id = response.json().get('id')
+                print(f"✅ Image posted! ID: {post_id}")
+                return True, post_id
+            else:
+                error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+                print(f"❌ Image failed: {error_msg}")
+                return False, None
+        else:
+            # Post as Text
+            print("📝 Posting as TEXT...")
+            url = f"{BASE_URL}/{page_id}/feed"
+            payload = {
+                "message": content,
+                "access_token": token
+            }
+            response = requests.post(url, data=payload, timeout=30)
+            
+            if response.status_code == 200:
+                post_id = response.json().get('id')
+                print(f"✅ Text posted! ID: {post_id}")
+                return True, post_id
+            else:
+                error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+                print(f"❌ Text failed: {error_msg}")
+                return False, None
+                
+    except Exception as e:
+        print(f"❌ Post error: {str(e)}")
+        return False, None
+
+def share_to_story(page_id, token, post_id):
+    """
+    Share a post to the page's Story
+    """
+    try:
+        print(f"📱 Sharing post {post_id} to Story...")
+        url = f"{BASE_URL}/{page_id}/stories"
+        payload = {
+            "media_id": post_id,
+            "access_token": token,
+            "story_type": "VIDEO" if "video" in str(post_id).lower() else "PHOTO"
+        }
+        
         response = requests.post(url, data=payload, timeout=30)
         
         if response.status_code == 200:
-            print(f"✅ Text post successful! Post ID: {response.json().get('id')}")
+            print(f"✅ Post shared to Story! Story ID: {response.json().get('id')}")
             return True
         else:
-            error_msg = response.json().get('error', {}).get('message', 'Unknown error')
-            print(f"❌ Text post failed: {error_msg}")
-            return False
+            # Try alternative method if first fails
+            print("🔄 Trying alternative story sharing method...")
+            url = f"{BASE_URL}/{page_id}/feed"
+            payload = {
+                "message": "📱 Check out this post!",
+                "access_token": token,
+                "published": "false",
+                "story_media_id": post_id
+            }
+            response = requests.post(url, data=payload, timeout=30)
+            
+            if response.status_code == 200:
+                print(f"✅ Story share successful!")
+                return True
+            else:
+                error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+                print(f"❌ Story share failed: {error_msg}")
+                return False
+                
     except Exception as e:
-        print(f"❌ Text post error: {str(e)}")
+        print(f"❌ Story error: {str(e)}")
         return False
 
-def post_image(page_id, token, message, image_url):
-    """Post image with caption to Facebook Page"""
-    url = f"{BASE_URL}/{page_id}/photos"
-    payload = {
-        "url": image_url,
-        "caption": message,
-        "access_token": token,
-        "published": "true"
-    }
-    
-    try:
-        response = requests.post(url, data=payload, timeout=30)
-        
-        if response.status_code == 200:
-            print(f"✅ Image post successful! Post ID: {response.json().get('id')}")
-            return True
-        else:
-            error_msg = response.json().get('error', {}).get('message', 'Unknown error')
-            print(f"❌ Image post failed: {error_msg}")
-            return False
-    except Exception as e:
-        print(f"❌ Image post error: {str(e)}")
-        return False
-
-def should_post_now():
-    """Check if it's a good time to post"""
-    delay = random.randint(5, 30)
-    time.sleep(delay)
-    return True
+# ============================================
+# MAIN EXECUTION
+# ============================================
 
 def run_poster():
-    """Main execution function"""
-    print("🏋️ Health & Fitness Auto-Poster (GitHub Actions)")
-    print("=" * 60)
-    print(f"⏰ Run time: {datetime.now().isoformat()}")
+    """Main execution function - 2 Reels + 3 Images daily"""
+    print("🏋️ FitLife Daily - Auto-Poster")
+    print("=" * 65)
+    print(f"⏰ Run time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("📋 Schedule: 2 Reels + 3 Images daily")
+    print("📱 Auto-share to Stories: Enabled")
+    print()
     
     # Pull latest changes
     git_pull()
@@ -186,47 +272,58 @@ def run_poster():
     posted_ids = get_posted_ids()
     print(f"📊 Already posted: {len(posted_ids)} of {len(posts)}")
     
-    # Find next unposted post
-    next_post = None
-    for post in posts:
-        post_id = post.get('id', '')
-        if post_id and post_id not in posted_ids:
-            next_post = post
-            break
+    # Post 5 times daily: 2 Reels + 3 Images
+    posts_scheduled = 0
+    story_share_count = 0
     
-    if not next_post:
-        print("🎉 All posts have been published!")
-        return
-    
-    post_id = next_post.get('id', '')
-    content = next_post.get('content', '').strip()
-    image_url = next_post.get('image_url', '').strip()
-    video_url = next_post.get('video_url', '').strip()
-    
-    print(f"\n📤 Post #{post_id}: {content[:50]}...")
-    
-    # Post
-    success = False
-    
-    try:
-        if image_url:
-            print("🖼️ Posting as IMAGE...")
-            success = post_image(PAGE_ID, ACCESS_TOKEN, content, image_url)
-            if not success:
-                print("🔄 Image failed. Falling back to text-only...")
-                success = post_text(PAGE_ID, ACCESS_TOKEN, content)
+    for post_type in POST_TYPES:
+        print(f"\n{'='*50}")
+        print(f"📤 Looking for {post_type.upper()} post...")
+        
+        # Get next unposted post of this type
+        next_post = get_next_post_by_type(posts, posted_ids, post_type)
+        
+        if not next_post:
+            print(f"⚠️ No {post_type} posts left! Skipping...")
+            continue
+        
+        post_id = next_post.get('id', '')
+        content = next_post.get('content', '').strip()
+        image_url = next_post.get('image_url', '').strip()
+        video_url = next_post.get('video_url', '').strip()
+        
+        print(f"📤 Post #{post_id}: {content[:50]}...")
+        
+        # Post to Facebook
+        success, fb_post_id = post_to_facebook(PAGE_ID, ACCESS_TOKEN, content, image_url, video_url)
+        
+        if success and fb_post_id:
+            # Mark as posted
+            mark_as_posted(post_id)
+            posts_scheduled += 1
+            print(f"✅ {post_type.upper()} post {post_id} published!")
+            
+            # Share to Story
+            print("📱 Attempting to share to Story...")
+            if share_to_story(PAGE_ID, ACCESS_TOKEN, fb_post_id):
+                story_share_count += 1
+            else:
+                print("⚠️ Story share failed, but post was successful.")
         else:
-            print("📝 Posting as TEXT...")
-            success = post_text(PAGE_ID, ACCESS_TOKEN, content)
+            print(f"❌ {post_type.upper()} post {post_id} failed.")
+        
+        # Wait between posts to avoid rate limiting
+        if post_type != POST_TYPES[-1]:
+            wait_time = random.randint(30, 60)
+            print(f"⏳ Waiting {wait_time} seconds before next post...")
+            time.sleep(wait_time)
     
-    except Exception as e:
-        print(f"❌ Unexpected error: {str(e)}")
-        success = False
-    
-    # Log the result
-    if success:
-        mark_as_posted(post_id)
-        print(f"✅ Post {post_id} marked as published")
+    # Summary
+    print(f"\n{'='*50}")
+    print("📊 POSTING SUMMARY")
+    print(f"   Total posts scheduled: {posts_scheduled} of 5")
+    print(f"   Stories created: {story_share_count}")
+    print(f"   Remaining posts: {len(posts) - len(posted_ids)}")
     
     # Push changes back to GitHub
     git_push()
