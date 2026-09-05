@@ -1,9 +1,13 @@
-name: Auto Post Health Content
+name: FitLife Daily Auto-Poster
 
 on:
+  # Schedule: 5 posts daily at strategic times
   schedule:
-    - cron: "0 8,13,18 * * *"  # 8 AM, 1 PM, 6 PM UTC
+    # 2 Reels + 3 Images spread throughout the day
+    - cron: "0 8,11,14,17,20 * * *"  # 8am, 11am, 2pm, 5pm, 8pm UTC
+  # Manual trigger
   workflow_dispatch:
+  # Also runs on push (for testing)
   push:
     branches: [ main ]
 
@@ -32,19 +36,6 @@ jobs:
         run: |
           pip install requests
       
-      - name: 🎨 Generate fresh content (weekly)
-        if: ${{ github.event.schedule == '0 0 * * 0' || github.event_name == 'workflow_dispatch' }}
-        run: |
-          python content_generator.py
-          echo "✅ New content generated"
-      
-      - name: 📊 Check if content exists
-        run: |
-          if [ ! -f "posts.csv" ]; then
-            echo "⚠️ No posts.csv found. Generating default content..."
-            python content_generator.py
-          fi
-      
       - name: 🚀 Post to Facebook
         env:
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
@@ -54,16 +45,8 @@ jobs:
       
       - name: 💾 Commit and push updates
         run: |
-          # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
-          
-          # Fetch latest changes
-          git pull --rebase origin main || echo "No changes to pull"
-          
-          # Add and commit
-          git add posted_log.txt posts.csv
+          git add posted_log.txt
           git diff --staged --quiet || git commit -m "📊 Update posting logs [skip ci]"
-          
-          # Push with force (if needed, but use --force-with-lease for safety)
-          git push origin main --force-with-lease || git push origin main
+          git push
