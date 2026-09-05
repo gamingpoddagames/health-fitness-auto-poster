@@ -1,12 +1,9 @@
 name: Auto Post Health Content
 
 on:
-  # Schedule: Posts 3 times daily
   schedule:
     - cron: "0 8,13,18 * * *"  # 8 AM, 1 PM, 6 PM UTC
-  # Manual trigger
   workflow_dispatch:
-  # Also runs on push (for testing)
   push:
     branches: [ main ]
 
@@ -23,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
@@ -56,8 +54,16 @@ jobs:
       
       - name: 💾 Commit and push updates
         run: |
+          # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
+          
+          # Fetch latest changes
+          git pull --rebase origin main || echo "No changes to pull"
+          
+          # Add and commit
           git add posted_log.txt posts.csv
           git diff --staged --quiet || git commit -m "📊 Update posting logs [skip ci]"
-          git push
+          
+          # Push with force (if needed, but use --force-with-lease for safety)
+          git push origin main --force-with-lease || git push origin main
