@@ -2,7 +2,6 @@
 """
 Health & Fitness Facebook Auto-Poster
 Runs on GitHub Actions - Fully Automatic
-Uses Facebook Graph API for text, images, and videos
 """
 
 import os
@@ -11,22 +10,72 @@ import json
 import requests
 import time
 import random
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
 # ============================================
-# CONFIGURATION - Environment Variables
+# CONFIGURATION
 # ============================================
 
 PAGE_ID = os.environ.get("FACEBOOK_PAGE_ID")
 ACCESS_TOKEN = os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN")
 POSTS_FILE = "posts.csv"
 LOG_FILE = "posted_log.txt"
-
-# Facebook API endpoints
 BASE_URL = "https://graph.facebook.com/v19.0"
-PAGE_ID = os.environ.get("FACEBOOK_PAGE_ID")
-ACCESS_TOKEN = os.environ.get("FACEBOOK_PAGE_ACCESS_TOKEN")
+
+# ============================================
+# GIT HELPER FUNCTIONS
+# ============================================
+
+def git_pull():
+    """Pull latest changes before making updates"""
+    try:
+        subprocess.run(["git", "pull", "--rebase", "origin", "main"], 
+                      capture_output=True, check=False)
+        print("✅ Git pull completed")
+    except Exception as e:
+        print(f"⚠️ Git pull error: {e}")
+
+def git_push():
+    """Push changes to GitHub"""
+    try:
+        # Add files
+        subprocess.run(["git", "add", LOG_FILE, POSTS_FILE], capture_output=True)
+        
+        # Check if there are changes
+        result = subprocess.run(["git", "diff", "--staged", "--quiet"], 
+                               capture_output=True)
+        
+        if result.returncode != 0:
+            # There are changes to commit
+            subprocess.run(["git", "commit", "-m", f"📊 Update logs {datetime.now().strftime('%Y-%m-%d %H:%M')} [skip ci]"], 
+                          capture_output=True)
+            
+            # Push with retry
+            for attempt in range(3):
+                push_result = subprocess.run(
+                    ["git", "push", "origin", "main", "--force-with-lease"],
+                    capture_output=True
+                )
+                if push_result.returncode == 0:
+                    print("✅ Git push successful")
+                    return True
+                else:
+                    print(f"⚠️ Push attempt {attempt + 1} failed. Retrying...")
+                    # Pull latest before retry
+                    git_pull()
+                    time.sleep(2)
+            
+            print("❌ Git push failed after 3 attempts")
+            return False
+        
+        print("ℹ️ No changes to commit")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Git error: {e}")
+        return False
 
 # ============================================
 # CORE FUNCTIONS
@@ -107,40 +156,8 @@ def post_image(page_id, token, message, image_url):
         print(f"❌ Image post error: {str(e)}")
         return False
 
-def post_video(page_id, token, message, video_url):
-    """Post a video/Reel to Facebook Page"""
-    url = f"{BASE_URL}/{page_id}/videos"
-    payload = {
-        "title": message[:60],  # Facebook limits title
-        "description": message,
-        "file_url": video_url,   # Must be a public URL
-        "access_token": token,
-        "published": "true"
-    }
-    
-    try:
-        response = requests.post(url, data=payload, timeout=60)  # Longer timeout for video
-        
-        if response.status_code == 200:
-            print(f"✅ Video post successful! Post ID: {response.json().get('id')}")
-            return True
-        else:
-            error_msg = response.json().get('error', {}).get('message', 'Unknown error')
-            print(f"❌ Video post failed: {error_msg}")
-            
-            # Check if it's a copyright issue
-            if "copyright" in error_msg.lower():
-                print("   ⚠️ This video may have been flagged for copyright.")
-                print("   Try using a different video source or text-only post.")
-            
-            return False
-    except Exception as e:
-        print(f"❌ Video post error: {str(e)}")
-        return False
-
 def should_post_now():
-    """Check if it's a good time to post (avoid spam detection)"""
-    # Add small random delay to look human
+    """Check if it's a good time to post"""
     delay = random.randint(5, 30)
     time.sleep(delay)
     return True
@@ -151,12 +168,12 @@ def run_poster():
     print("=" * 60)
     print(f"⏰ Run time: {datetime.now().isoformat()}")
     
+    # Pull latest changes
+    git_pull()
+    
     # Validate credentials
     if not PAGE_ID or not ACCESS_TOKEN:
         print("❌ Missing PAGE_ID or ACCESS_TOKEN in environment!")
-        print("   Add these as GitHub Secrets.")
-        print("   FACEBOOK_PAGE_ID: Your page ID")
-        print("   FACEBOOK_PAGE_ACCESS_TOKEN: Your long-lived access token")
         return
     
     # Load content
@@ -179,7 +196,6 @@ def run_poster():
     
     if not next_post:
         print("🎉 All posts have been published!")
-        print(f"   Generated {len(posts)} new posts? Run content_generator.py again.")
         return
     
     post_id = next_post.get('id', '')
@@ -188,36 +204,17 @@ def run_poster():
     video_url = next_post.get('video_url', '').strip()
     
     print(f"\n📤 Post #{post_id}: {content[:50]}...")
-    print(f"   Image: {'Yes' if image_url else 'No'}")
-    print(f"   Video: {'Yes' if video_url else 'No'}")
     
-    # Check posting time
-    if not should_post_now():
-        print("⏰ Skipping post (random delay check failed)")
-        return
-    
-    # Choose the right posting method
+    # Post
     success = False
     
     try:
-        if video_url:
-            print("🎬 Posting as VIDEO/REEL...")
-            success = post_video(PAGE_ID, ACCESS_TOKEN, content, video_url)
-            
-            # If video fails, try text-only fallback
-            if not success:
-                print("🔄 Video failed. Falling back to text-only post...")
-                success = post_text(PAGE_ID, ACCESS_TOKEN, content)
-        
-        elif image_url:
+        if image_url:
             print("🖼️ Posting as IMAGE...")
             success = post_image(PAGE_ID, ACCESS_TOKEN, content, image_url)
-            
-            # If image fails, try text-only fallback
             if not success:
-                print("🔄 Image failed. Falling back to text-only post...")
+                print("🔄 Image failed. Falling back to text-only...")
                 success = post_text(PAGE_ID, ACCESS_TOKEN, content)
-        
         else:
             print("📝 Posting as TEXT...")
             success = post_text(PAGE_ID, ACCESS_TOKEN, content)
@@ -230,10 +227,9 @@ def run_poster():
     if success:
         mark_as_posted(post_id)
         print(f"✅ Post {post_id} marked as published")
-        print(f"📝 Logged to {LOG_FILE}")
-    else:
-        print("❌ Post failed. Will retry next time.")
-        print("   Check your Facebook token and Page permissions.")
+    
+    # Push changes back to GitHub
+    git_push()
     
     print("\n✨ Done!")
 
