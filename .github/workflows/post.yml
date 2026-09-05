@@ -1,13 +1,9 @@
 name: FitLife Daily Auto-Poster
 
 on:
-  # Schedule: 5 posts daily at strategic times
   schedule:
-    # 2 Reels + 3 Images spread throughout the day
     - cron: "0 8,11,14,17,20 * * *"  # 8am, 11am, 2pm, 5pm, 8pm UTC
-  # Manual trigger
   workflow_dispatch:
-  # Also runs on push (for testing)
   push:
     branches: [ main ]
 
@@ -45,8 +41,35 @@ jobs:
       
       - name: 💾 Commit and push updates
         run: |
+          # Configure git
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
+          
+          # Fetch latest changes from remote
+          git fetch origin main
+          
+          # Stash local changes
+          git stash save "Temporary stash for pull" || echo "No changes to stash"
+          
+          # Pull latest with rebase
+          git pull origin main --rebase || echo "Pull failed, continuing..."
+          
+          # Pop stash
+          git stash pop || echo "No stash to pop"
+          
+          # Add and commit changes
           git add posted_log.txt
           git diff --staged --quiet || git commit -m "📊 Update posting logs [skip ci]"
-          git push
+          
+          # Try to push with retry
+          for i in 1 2 3; do
+            echo "Push attempt $i..."
+            if git push origin main --force-with-lease; then
+              echo "✅ Push successful!"
+              break
+            else
+              echo "⚠️ Push attempt $i failed, pulling latest..."
+              git pull origin main --rebase
+              sleep 5
+            fi
+          done
