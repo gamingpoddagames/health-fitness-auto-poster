@@ -1,1 +1,63 @@
+name: Auto Post Health Content
 
+on:
+  # Schedule: Posts 3 times daily
+  schedule:
+    - cron: "0 8,13,18 * * *"  # 8 AM, 1 PM, 6 PM UTC
+  # Manual trigger
+  workflow_dispatch:
+  # Also runs on push (for testing)
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: 📦 Install dependencies
+        run: |
+          pip install requests
+      
+      - name: 🎨 Generate fresh content (weekly)
+        if: ${{ github.event.schedule == '0 0 * * 0' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          python content_generator.py
+          echo "✅ New content generated"
+      
+      - name: 📊 Check if content exists
+        run: |
+          if [ ! -f "posts.csv" ]; then
+            echo "⚠️ No posts.csv found. Generating default content..."
+            python content_generator.py
+          fi
+      
+      - name: 🚀 Post to Facebook
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+        run: |
+          python fb_poster.py
+      
+      - name: 💾 Commit and push updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add posted_log.txt posts.csv
+          git diff --staged --quiet || git commit -m "📊 Update posting logs [skip ci]"
+          git push
