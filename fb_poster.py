@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
-FitLife Daily - Facebook Auto-Poster
-Posts: 2 Reels + 3 Images daily
-NO DUPLICATES - Each post only once
+FitLife Daily - Facebook Auto-Poster (FIXED)
 """
 
 import os
@@ -82,28 +80,89 @@ def get_next_post(posts, posted_ids, post_type):
             return post
     return None
 
-def post_to_facebook(content, image_url=None, video_url=None):
+def get_file_url(file_path):
+    """Convert local file path to URL or full path"""
+    if not file_path:
+        return None
+    
+    # If it's already a URL (starts with http), return it
+    if file_path.startswith('http'):
+        return file_path
+    
+    # If it's a local file, check if it exists
+    if os.path.exists(file_path):
+        # For GitHub Actions, we need absolute path
+        return os.path.abspath(file_path)
+    
+    # If file doesn't exist, try to find it in images/ folder
+    alt_path = f"images/{os.path.basename(file_path)}"
+    if os.path.exists(alt_path):
+        return os.path.abspath(alt_path)
+    
+    return None
+
+def post_to_facebook(content, image_path=None, video_path=None):
     try:
-        if video_url:
+        if video_path:
             print("🎬 Posting as REEL...")
             url = f"{BASE_URL}/{PAGE_ID}/videos"
             payload = {
                 "title": content[:60],
                 "description": content,
-                "file_url": video_url,
+                "file_url": video_path,  # Can be URL or local path
                 "access_token": ACCESS_TOKEN,
                 "published": "true",
+                # FIXED: Use correct Facebook category
                 "content_category": "FITNESS"
             }
-        elif image_url:
+            
+            # If video is local file, upload it
+            if not video_path.startswith('http') and os.path.exists(video_path):
+                print(f"📤 Uploading local video: {video_path}")
+                with open(video_path, 'rb') as f:
+                    files = {'source': f}
+                    response = requests.post(
+                        url,
+                        data={
+                            "title": content[:60],
+                            "description": content,
+                            "access_token": ACCESS_TOKEN,
+                            "published": "true",
+                            "content_category": "FITNESS"
+                        },
+                        files=files,
+                        timeout=120
+                    )
+            else:
+                response = requests.post(url, data=payload, timeout=120)
+            
+        elif image_path:
             print("🖼️ Posting as IMAGE...")
             url = f"{BASE_URL}/{PAGE_ID}/photos"
-            payload = {
-                "url": image_url,
-                "caption": content,
-                "access_token": ACCESS_TOKEN,
-                "published": "true"
-            }
+            
+            # If image is local file
+            if os.path.exists(image_path):
+                print(f"📤 Uploading local image: {image_path}")
+                with open(image_path, 'rb') as f:
+                    files = {'source': f}
+                    response = requests.post(
+                        url,
+                        data={
+                            "caption": content,
+                            "access_token": ACCESS_TOKEN,
+                            "published": "true"
+                        },
+                        files=files,
+                        timeout=60
+                    )
+            else:
+                payload = {
+                    "url": image_path,
+                    "caption": content,
+                    "access_token": ACCESS_TOKEN,
+                    "published": "true"
+                }
+                response = requests.post(url, data=payload, timeout=60)
         else:
             print("📝 Posting as TEXT...")
             url = f"{BASE_URL}/{PAGE_ID}/feed"
@@ -111,15 +170,18 @@ def post_to_facebook(content, image_url=None, video_url=None):
                 "message": content,
                 "access_token": ACCESS_TOKEN
             }
+            response = requests.post(url, data=payload, timeout=60)
         
-        response = requests.post(url, data=payload, timeout=60)
         if response.status_code == 200:
             post_id = response.json().get('id')
             print(f"✅ Posted! ID: {post_id}")
             return True, post_id
         else:
-            print(f"❌ Failed: {response.json().get('error', {}).get('message', 'Unknown')}")
+            error = response.json().get('error', {})
+            error_msg = error.get('message', 'Unknown error')
+            print(f"❌ Failed: {error_msg}")
             return False, None
+            
     except Exception as e:
         print(f"❌ Error: {e}")
         return False, None
@@ -177,11 +239,28 @@ def run_poster():
             print(f"⚠️ No {post_type} posts left")
             continue
         
+        # Get file paths
+        image_file = post.get('image_url', '').strip()
+        video_file = post.get('video_url', '').strip()
+        
+        # Fix file paths
+        if image_file:
+            image_file = get_file_url(image_file)
+            if not image_file:
+                print(f"⚠️ Image file not found: {post.get('image_url', '')}")
+                continue
+        
+        if video_file:
+            video_file = get_file_url(video_file)
+            if not video_file:
+                print(f"⚠️ Video file not found: {post.get('video_url', '')}")
+                continue
+        
         print(f"\n📤 Post #{post['id']} ({post_type.upper()})")
         success, fb_id = post_to_facebook(
             post['content'],
-            post.get('image_url', ''),
-            post.get('video_url', '')
+            image_file,
+            video_file
         )
         
         if success and fb_id:
@@ -192,7 +271,9 @@ def run_poster():
                 story_count += 1
         
         if posts_scheduled < posts_to_post:
-            time.sleep(random.randint(30, 60))
+            wait_time = random.randint(30, 60)
+            print(f"⏳ Waiting {wait_time} seconds...")
+            time.sleep(wait_time)
     
     print(f"\n📊 Summary: {posts_scheduled} posts, {story_count} stories")
     git_safe_push()
