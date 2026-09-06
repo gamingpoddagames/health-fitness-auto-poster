@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 FitLife Daily - Content Generator
-Generates posts with images and local videos
+Generates posts with generated images and local videos
 """
 
 import csv
@@ -11,7 +11,32 @@ import glob
 from datetime import datetime
 
 # ============================================
-# GET VIDEOS FROM LOCAL FOLDER
+# GET GENERATED IMAGES
+# ============================================
+
+def get_generated_images():
+    """Get list of images created by create_images.py"""
+    images_dir = "images"
+    image_files = []
+    
+    if os.path.exists(images_dir):
+        image_files = glob.glob(f"{images_dir}/*.png")
+        
+        csv_file = f"{images_dir}/image_list.csv"
+        if os.path.exists(csv_file):
+            try:
+                with open(csv_file, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if os.path.exists(row['file']):
+                            image_files.append(row['file'])
+            except:
+                pass
+    
+    return list(set(image_files))
+
+# ============================================
+# GET GENERATED VIDEOS
 # ============================================
 
 def get_created_videos():
@@ -97,68 +122,40 @@ VIDEO_POSTS = [
 ]
 
 # ============================================
-# IMAGE POSTS
-# ============================================
-
-IMAGE_POSTS = [
-    {
-        "content": "💪 Start your day with 5 minutes of dynamic stretching! This increases blood flow by 30%, warms up your muscles, and reduces injury risk.\n\n#FitnessTips #WarmUp #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg"
-    },
-    {
-        "content": "🥗 Add a handful of spinach to your morning smoothie! You'll get 50% of your daily Vitamin K and 20% of your iron needs.\n\n#HealthyEating #Smoothie #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/2681319/pexels-photo-2681319.jpeg"
-    },
-    {
-        "content": "💧 Drink 8 glasses of water daily to boost your metabolism by up to 30% for one hour!\n\n#Hydration #Metabolism #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/414029/pexels-photo-414029.jpeg"
-    },
-    {
-        "content": "😴 Your body repairs muscle during sleep. Getting 7-8 hours increases recovery by 40%.\n\n#SleepWell #Recovery #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg"
-    },
-    {
-        "content": "🏃 The ideal weekly routine: 3 days strength + 2 days cardio + 2 rest days.\n\n#WorkoutPlan #FitnessJourney #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/260447/pexels-photo-260447.jpeg"
-    },
-    {
-        "content": "🧘 Take 5 deep breaths using the 4-4-4 method: Inhale 4s, hold 4s, exhale 4s.\n\n#MentalHealth #StressRelief #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg"
-    },
-    {
-        "content": "🎯 Set SMART goals: Specific, Measurable, Achievable, Relevant, Time-bound.\n\n#GoalSetting #Motivation #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/2581121/pexels-photo-2581121.jpeg"
-    },
-    {
-        "content": "📱 7 minutes of high-intensity exercise equals 30 minutes of moderate activity!\n\n#QuickWorkout #FitnessApp #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/1954524/pexels-photo-1954524.jpeg"
-    },
-    {
-        "content": "🥑 Avocado with sea salt and chili flakes. Healthy fats, fiber, and potassium in 5 minutes!\n\n#HealthySnacks #CleanEating #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/317157/pexels-photo-317157.jpeg"
-    },
-    {
-        "content": "🔥 HIIT: 20 sec work / 10 sec rest x 8 rounds. Burns fat for 24 hours!\n\n#HIIT #FatBurn #QuickWorkout #FitLifeDaily",
-        "image": "https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg"
-    }
-]
-
-# ============================================
 # GENERATE POSTS
 # ============================================
 
 def generate_posts():
-    """Generate posts with images and local videos"""
+    """Generate posts with generated images and local videos"""
     all_posts = []
     
-    for idx, post in enumerate(IMAGE_POSTS, 1):
-        all_posts.append({
-            'id': f'post{idx:03d}',
-            'content': post['content'],
-            'image_url': post['image'],
-            'video_url': ''
-        })
+    # Get generated images
+    image_files = get_generated_images()
+    image_count = len(image_files)
     
+    if image_count > 0:
+        print(f"✅ Found {image_count} images in images/ folder")
+        for idx, image_file in enumerate(image_files, 1):
+            # Create simple content for image
+            title = os.path.basename(image_file).replace("_", " ").replace(".png", "")
+            all_posts.append({
+                'id': f'post{idx:03d}',
+                'content': f"🏋️ FitLife Daily\n\nCheck out this fitness tip!\n\n#FitLifeDaily #Fitness #Health",
+                'image_url': image_file,
+                'video_url': ''
+            })
+    else:
+        print("⚠️ No images found! Run 'python create_images.py' first.")
+        # Add fallback text-only posts
+        for idx in range(1, 11):
+            all_posts.append({
+                'id': f'post{idx:03d}',
+                'content': f"🏋️ FitLife Daily\n\nDay {idx}: Stay consistent!\n\n#FitLifeDaily #Fitness #Health",
+                'image_url': '',
+                'video_url': ''
+            })
+    
+    # Get videos
     video_files = get_created_videos()
     video_count = len(video_files)
     
@@ -173,15 +170,11 @@ def generate_posts():
             })
     else:
         print("⚠️ No videos found! Run 'python create_reels.py' first.")
-        for idx, video_post in enumerate(VIDEO_POSTS[:10], len(all_posts) + 1):
-            all_posts.append({
-                'id': f'post{idx:03d}',
-                'content': video_post['content'] + "\n\n⚠️ Video not available - run create_reels.py to generate!",
-                'image_url': '',
-                'video_url': ''
-            })
     
+    # Shuffle
     random.shuffle(all_posts)
+    
+    # Reassign IDs
     for i, post in enumerate(all_posts, 1):
         post['id'] = f'post{i:03d}'
     
