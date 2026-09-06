@@ -11,11 +11,10 @@ from datetime import datetime
 
 # ============================================
 # CONTENT WITH MATCHED IMAGES AND VIDEOS
-# Each post has its own perfectly matched media
 # ============================================
 
 CONTENT_WITH_MEDIA = [
-    # ===== HEALTH TIPS WITH IMAGES =====
+    # ===== HEALTH TIPS WITH IMAGES (Posts 1-20) =====
     {
         "id": "post001",
         "content": "💪 Start your day with 5 minutes of dynamic stretching! This increases blood flow by 30%, warms up your muscles, and reduces injury risk. Try leg swings, arm circles, and torso twists before any workout.\n\n#FitnessTips #WarmUp #DynamicStretching #FitLifeDaily",
@@ -136,8 +135,7 @@ CONTENT_WITH_MEDIA = [
         "image": "https://images.pexels.com/photos/3764016/pexels-photo-3764016.jpeg",
         "video": ""
     },
-
-    # ===== MOTIVATIONAL POSTS WITH IMAGES =====
+    # ===== MOTIVATIONAL POSTS WITH IMAGES (Posts 21-30) =====
     {
         "id": "post021",
         "content": "✨ 'The only bad workout is the one that didn't happen.' Even 10 minutes counts. When you're tired, do half your workout. You'll be glad you started!\n\n#Motivation #FitnessMindset #JustStart #FitLifeDaily",
@@ -199,7 +197,7 @@ CONTENT_WITH_MEDIA = [
         "video": ""
     },
 
-    # ===== FITNESS FACTS WITH IMAGES =====
+    # ===== FITNESS FACTS WITH IMAGES (Posts 31-40) =====
     {
         "id": "post031",
         "content": "📊 Walking 10,000 steps burns 400-500 calories - that's a full meal! Park farther away, take stairs, walk after lunch. Small steps add up to big results!\n\n#Walking #FitnessFacts #Health #FitLifeDaily",
@@ -261,7 +259,7 @@ CONTENT_WITH_MEDIA = [
         "video": ""
     },
 
-    # ===== WORKOUT GUIDES WITH IMAGES =====
+    # ===== WORKOUT GUIDES WITH IMAGES (Posts 41-50) =====
     {
         "id": "post041",
         "content": "🏋️ **Beginner Bodyweight Workout** (15 min)\n\n1️⃣ Squats - 10 reps\n2️⃣ Push-ups (knee) - 10 reps\n3️⃣ Lunges each leg - 10 reps\n4️⃣ Plank - 20 seconds\n5️⃣ Glute Bridges - 10 reps\n\nRepeat 3 circuits. Rest 60 seconds between rounds. Do this 3x weekly!\n\n#Workout #Bodyweight #BeginnerFitness #FitLifeDaily",
@@ -323,7 +321,7 @@ CONTENT_WITH_MEDIA = [
         "video": ""
     },
 
-    # ===== VIDEO POSTS WITH MATCHING VIDEOS =====
+    # ===== VIDEO POSTS (Posts 51-78) =====
     {
         "id": "post051",
         "content": "🎬 **Intense Workout Session!** Watch this to get inspired.\n\nRemember: 'The only bad workout is the one that didn't happen.'\n\nTurn on sound for maximum motivation! 🎵\n\n#WorkoutMotivation #IntenseWorkout #FitLifeDaily",
@@ -384,8 +382,6 @@ CONTENT_WITH_MEDIA = [
         "image": "",
         "video": "https://www.pexels.com/video/man-doing-push-ups-3968341/"
     },
-
-    # ===== MORE IMAGE POSTS =====
     {
         "id": "post061",
         "content": "❤️ 150 minutes of moderate cardio weekly strengthens your heart. Walking, jogging, swimming, or cycling all count. Start with 30 minutes, 5 days per week.\n\n#HeartHealth #Cardio #Wellness #FitLifeDaily",
@@ -446,8 +442,6 @@ CONTENT_WITH_MEDIA = [
         "image": "https://images.pexels.com/photos/414029/pexels-photo-414029.jpeg",
         "video": ""
     },
-
-    # ===== MORE VIDEO POSTS =====
     {
         "id": "post071",
         "content": "🎬 **Quick Cardio Blast!** Get your heart rate up with this intense cardio session.\n\nPerfect for busy days - just 10 minutes to burn calories and boost your mood!\n\n#Cardio #QuickWorkout #FatBurn #FitLifeDaily",
@@ -499,12 +493,11 @@ CONTENT_WITH_MEDIA = [
 ]
 
 # ============================================
-# GENERATE POSTS
+# GENERATE FUNCTIONS
 # ============================================
 
 def generate_posts():
     """Return all 78 posts with matched images/videos"""
-    # Shuffle to avoid patterns
     posts = CONTENT_WITH_MEDIA.copy()
     random.shuffle(posts)
     
@@ -545,7 +538,7 @@ def print_stats(posts):
     print(f"   Text-Only:        {text_only} ({text_only/total*100:.0f}%)")
     print(f"   100% Matched Media ✅")
 
-def print_samples(posts, count=8):
+def print_samples(posts, count=6):
     """Show sample posts"""
     print(f"\n📌 Sample Posts:")
     print(f"   {'=' * 55}")
@@ -555,8 +548,14 @@ def print_samples(posts, count=8):
         print(f"\n   [{idx}] {post['id']}")
         content_preview = post['content'][:80] + "..." if len(post['content']) > 80 else post['content']
         print(f"   Content: {content_preview}")
-        print(f"   Image:   {'✅ ' + post['image'][:50] + '...' if post['image'] else '❌'}")
-        print(f"   Video:   {'✅ ' + post['video'][:50] + '...' if post['video'] else '❌'}")
+        if post['image']:
+            print(f"   Image:   ✅ {post['image'][:50]}...")
+        else:
+            print(f"   Image:   ❌")
+        if post['video']:
+            print(f"   Video:   ✅ {post['video'][:50]}...")
+        else:
+            print(f"   Video:   ❌")
         print(f"   {'-' * 50}")
 
 # ============================================
@@ -584,5 +583,5 @@ if __name__ == "__main__":
     
     print("\n✨ CONTENT GENERATION COMPLETE!")
     print(f"📊 {len(posts)} posts with 100% matched media")
-    print(f"📈 3 posts daily = {len(posts)//3} days of content")
+    print(f"📈 5 posts daily = {len(posts)//5} days of content")
     print("🚀 Run 'python fb_poster.py' to start posting.")
