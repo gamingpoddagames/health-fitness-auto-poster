@@ -2,7 +2,7 @@
 """
 FitLife Daily Facebook Auto-Poster
 Posts: 2 Reels + 3 Image Posts Daily
-Automatically shares all posts to Stories
+NO DUPLICATES - Each post only once
 """
 
 import os
@@ -29,72 +29,40 @@ BASE_URL = "https://graph.facebook.com/v19.0"
 POST_TYPES = ['reel', 'reel', 'image', 'image', 'image']
 
 # ============================================
-# GIT HELPER FUNCTIONS (IMPROVED)
+# GIT HELPER FUNCTIONS
 # ============================================
 
 def git_safe_push():
     """Safely push changes to GitHub with conflict resolution"""
     try:
-        # Configure git
         subprocess.run(["git", "config", "--local", "user.email", "action@github.com"], 
                       capture_output=True)
         subprocess.run(["git", "config", "--local", "user.name", "GitHub Action Bot"], 
                       capture_output=True)
         
-        # Fetch latest changes
-        print("📥 Fetching latest changes...")
         subprocess.run(["git", "fetch", "origin", "main"], capture_output=True)
-        
-        # Check if there are changes to commit
         subprocess.run(["git", "add", LOG_FILE, POSTS_FILE], capture_output=True)
         
-        # Check if there are staged changes
         result = subprocess.run(["git", "diff", "--staged", "--quiet"], capture_output=True)
         
         if result.returncode != 0:
-            # There are changes to commit
             print("📝 Committing changes...")
             subprocess.run(["git", "commit", "-m", f"📊 Update logs {datetime.now().strftime('%Y-%m-%d %H:%M')} [skip ci]"], 
                           capture_output=True)
             
-            # Try to push with rebase
             for attempt in range(3):
                 print(f"🔄 Push attempt {attempt + 1}/3...")
-                
-                # Try force-with-lease first
                 push_result = subprocess.run(
                     ["git", "push", "origin", "main", "--force-with-lease"],
                     capture_output=True
                 )
-                
                 if push_result.returncode == 0:
                     print("✅ Git push successful!")
                     return True
                 else:
                     print(f"⚠️ Push attempt {attempt + 1} failed. Pulling latest...")
-                    
-                    # Pull with rebase
-                    pull_result = subprocess.run(
-                        ["git", "pull", "--rebase", "origin", "main"],
-                        capture_output=True
-                    )
-                    
-                    if pull_result.returncode == 0:
-                        print("✅ Pull successful, retrying push...")
-                        time.sleep(2)
-                    else:
-                        print("❌ Pull failed, trying force push...")
-                        # Last resort: force push
-                        force_result = subprocess.run(
-                            ["git", "push", "origin", "main", "--force"],
-                            capture_output=True
-                        )
-                        if force_result.returncode == 0:
-                            print("✅ Force push successful!")
-                            return True
-                        else:
-                            print("❌ All push attempts failed!")
-                            return False
+                    subprocess.run(["git", "pull", "--rebase", "origin", "main"], capture_output=True)
+                    time.sleep(2)
             
             print("❌ Git push failed after 3 attempts")
             return False
@@ -140,9 +108,14 @@ def mark_as_posted(post_id):
         f.flush()
 
 def get_next_post_by_type(posts, posted_ids, post_type):
-    """Get the next unposted post of a specific type"""
+    """
+    Get the next UNPOSTED post of a specific type
+    Checks if post is already in posted_ids
+    """
     for post in posts:
         post_id = post.get('id', '')
+        
+        # Skip if already posted
         if post_id in posted_ids:
             continue
         
@@ -152,6 +125,11 @@ def get_next_post_by_type(posts, posted_ids, post_type):
             return post
     
     return None
+
+def get_all_unposted(posts, posted_ids):
+    """Get count of all unposted posts"""
+    unposted = [p for p in posts if p.get('id', '') not in posted_ids]
+    return len(unposted)
 
 def post_to_facebook(page_id, token, content, image_url=None, video_url=None):
     """Post to Facebook - handles text, image, and video"""
@@ -226,8 +204,7 @@ def share_to_story(page_id, token, post_id):
         url = f"{BASE_URL}/{page_id}/stories"
         payload = {
             "media_id": post_id,
-            "access_token": token,
-            "story_type": "VIDEO" if "video" in str(post_id).lower() else "PHOTO"
+            "access_token": token
         }
         
         response = requests.post(url, data=payload, timeout=30)
@@ -236,23 +213,8 @@ def share_to_story(page_id, token, post_id):
             print(f"✅ Post shared to Story!")
             return True
         else:
-            # Try alternative method
-            print("🔄 Trying alternative story sharing...")
-            url = f"{BASE_URL}/{page_id}/feed"
-            payload = {
-                "message": "📱 Check this out!",
-                "access_token": token,
-                "published": "false",
-                "story_media_id": post_id
-            }
-            response = requests.post(url, data=payload, timeout=30)
-            
-            if response.status_code == 200:
-                print(f"✅ Story share successful!")
-                return True
-            else:
-                print(f"❌ Story share failed")
-                return False
+            print(f"❌ Story share failed")
+            return False
                 
     except Exception as e:
         print(f"❌ Story error: {str(e)}")
@@ -263,9 +225,9 @@ def share_to_story(page_id, token, post_id):
 # ============================================
 
 def run_poster():
-    """Main execution function - 2 Reels + 3 Images daily"""
-    print("🏋️ FitLife Daily - Auto-Poster")
-    print("=" * 65)
+    """Main execution function - 2 Reels + 3 Images daily - NO DUPLICATES"""
+    print("🏋️ FitLife Daily - Auto-Poster (No Duplicates)")
+    print("=" * 70)
     print(f"⏰ Run time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("📋 Schedule: 2 Reels + 3 Images daily")
     print("📱 Auto-share to Stories: Enabled")
@@ -284,58 +246,109 @@ def run_poster():
     
     # Check what's already posted
     posted_ids = get_posted_ids()
-    print(f"📊 Already posted: {len(posted_ids)} of {len(posts)}")
+    total_posts = len(posts)
+    already_posted = len(posted_ids)
+    remaining_posts = total_posts - already_posted
     
-    # Post 5 times daily: 2 Reels + 3 Images
+    print(f"📊 Post Status:")
+    print(f"   Total posts:   {total_posts}")
+    print(f"   Already posted: {already_posted}")
+    print(f"   Remaining:     {remaining_posts}")
+    print()
+    
+    # CHECK: If no posts remain, STOP completely
+    if remaining_posts <= 0:
+        print("🎉 ALL POSTS HAVE BEEN PUBLISHED!")
+        print(f"   All {total_posts} posts have been posted.")
+        print("   ⏹️  System will stop. No more posts to publish.")
+        print()
+        print("📝 To add new content:")
+        print("   1. Run 'python content_generator.py' to generate new posts")
+        print("   2. Commit and push to GitHub")
+        return
+    
+    # Determine how many posts we can actually post today (max 5)
+    posts_to_post = min(5, remaining_posts)
+    print(f"📤 Today's schedule: {posts_to_post} posts (2 Reels + 3 Images max)")
+    print()
+    
+    # Track what we've posted this run
     posts_scheduled = 0
     story_share_count = 0
-    posted_posts = []
+    posted_this_run = []
     
-    for post_type in POST_TYPES:
-        print(f"\n{'='*50}")
-        print(f"📤 Looking for {post_type.upper()} post...")
-        
+    # Post up to 5 posts (or remaining)
+    for post_type in POST_TYPES[:posts_to_post]:
+        # Check if we still have posts remaining for this type
         next_post = get_next_post_by_type(posts, posted_ids, post_type)
         
         if not next_post:
-            print(f"⚠️ No {post_type} posts left! Skipping...")
-            continue
+            print(f"⚠️ No {post_type} posts left! Trying next type...")
+            # Try to find ANY unposted post
+            for p in posts:
+                if p.get('id', '') not in posted_ids:
+                    next_post = p
+                    break
+            
+            if not next_post:
+                print("❌ No posts left at all!")
+                break
         
         post_id = next_post.get('id', '')
         content = next_post.get('content', '').strip()
         image_url = next_post.get('image_url', '').strip()
         video_url = next_post.get('video_url', '').strip()
         
-        print(f"📤 Post #{post_id}: {content[:50]}...")
+        # Determine actual type
+        actual_type = 'reel' if video_url else 'image' if image_url else 'text'
+        
+        print(f"\n{'='*50}")
+        print(f"📤 Post #{post_id} ({actual_type.upper()})")
+        print(f"   Content: {content[:60]}...")
         
         # Post to Facebook
         success, fb_post_id = post_to_facebook(PAGE_ID, ACCESS_TOKEN, content, image_url, video_url)
         
         if success and fb_post_id:
+            # Mark as posted IMMEDIATELY to avoid duplicates
             mark_as_posted(post_id)
+            posted_ids.add(post_id)  # Update local set
             posts_scheduled += 1
-            posted_posts.append(post_id)
-            print(f"✅ {post_type.upper()} post {post_id} published!")
+            posted_this_run.append(post_id)
+            print(f"✅ {actual_type.upper()} post {post_id} published and logged!")
             
             # Share to Story
             print("📱 Sharing to Story...")
             if share_to_story(PAGE_ID, ACCESS_TOKEN, fb_post_id):
                 story_share_count += 1
         else:
-            print(f"❌ {post_type.upper()} post {post_id} failed.")
+            print(f"❌ Post {post_id} failed. Will retry next time.")
         
         # Wait between posts
-        if post_type != POST_TYPES[-1]:
+        if posts_scheduled < posts_to_post:
             wait_time = random.randint(30, 60)
-            print(f"⏳ Waiting {wait_time} seconds...")
+            print(f"⏳ Waiting {wait_time} seconds before next post...")
             time.sleep(wait_time)
     
-    # Summary
-    print(f"\n{'='*50}")
+    # Final Summary
+    print(f"\n{'='*70}")
     print("📊 POSTING SUMMARY")
-    print(f"   Posts scheduled: {posts_scheduled} of 5")
-    print(f"   Stories created: {story_share_count}")
-    print(f"   Remaining posts: {len(posts) - len(posted_ids)}")
+    print(f"   Posts scheduled today: {posts_scheduled}")
+    print(f"   Stories created:       {story_share_count}")
+    
+    # Calculate remaining
+    updated_posted = len(get_posted_ids())
+    remaining_after = total_posts - updated_posted
+    
+    print(f"\n📊 CONTENT REMAINING:")
+    print(f"   Total posts:   {total_posts}")
+    print(f"   Already posted: {updated_posted}")
+    print(f"   Remaining:     {remaining_after}")
+    
+    if remaining_after <= 0:
+        print("\n🎉 ALL POSTS COMPLETE!")
+        print("   All content has been published.")
+        print("   Run content_generator.py for new content.")
     
     # Push changes to GitHub
     print("\n💾 Pushing updates to GitHub...")
