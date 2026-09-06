@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-FitLife Daily - Content Generator with Local Videos
+FitLife Daily - Content Generator
+Generates posts with images and local videos
 """
 
 import csv
@@ -21,7 +22,6 @@ def get_created_videos():
     if os.path.exists(videos_dir):
         video_files = glob.glob(f"{videos_dir}/*.mp4")
         
-        # Also try from CSV
         csv_file = f"{videos_dir}/reel_list.csv"
         if os.path.exists(csv_file):
             try:
@@ -33,7 +33,6 @@ def get_created_videos():
             except:
                 pass
     
-    # Remove duplicates
     return list(set(video_files))
 
 # ============================================
@@ -107,39 +106,39 @@ IMAGE_POSTS = [
         "image": "https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg"
     },
     {
-        "content": "🥗 Add a handful of spinach to your morning smoothie! You'll get 50% of your daily Vitamin K and 20% of your iron needs. You won't even taste it!\n\n#HealthyEating #Smoothie #FitLifeDaily",
+        "content": "🥗 Add a handful of spinach to your morning smoothie! You'll get 50% of your daily Vitamin K and 20% of your iron needs.\n\n#HealthyEating #Smoothie #FitLifeDaily",
         "image": "https://images.pexels.com/photos/2681319/pexels-photo-2681319.jpeg"
     },
     {
-        "content": "💧 Drink 8 glasses of water daily to boost your metabolism by up to 30% for one hour! Your skin, energy, and focus will improve.\n\n#Hydration #Metabolism #FitLifeDaily",
+        "content": "💧 Drink 8 glasses of water daily to boost your metabolism by up to 30% for one hour!\n\n#Hydration #Metabolism #FitLifeDaily",
         "image": "https://images.pexels.com/photos/414029/pexels-photo-414029.jpeg"
     },
     {
-        "content": "😴 Your body repairs muscle during sleep. Getting 7-8 hours increases recovery by 40% and balances hormones.\n\n#SleepWell #Recovery #FitLifeDaily",
+        "content": "😴 Your body repairs muscle during sleep. Getting 7-8 hours increases recovery by 40%.\n\n#SleepWell #Recovery #FitLifeDaily",
         "image": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg"
     },
     {
-        "content": "🏃 The ideal weekly routine: 3 days strength + 2 days cardio + 2 rest days. This balance prevents injury and builds muscle.\n\n#WorkoutPlan #FitnessJourney #FitLifeDaily",
+        "content": "🏃 The ideal weekly routine: 3 days strength + 2 days cardio + 2 rest days.\n\n#WorkoutPlan #FitnessJourney #FitLifeDaily",
         "image": "https://images.pexels.com/photos/260447/pexels-photo-260447.jpeg"
     },
     {
-        "content": "🧘 Take 5 deep breaths using the 4-4-4 method: Inhale 4s, hold 4s, exhale 4s. Stress relief in 60 seconds!\n\n#MentalHealth #StressRelief #FitLifeDaily",
+        "content": "🧘 Take 5 deep breaths using the 4-4-4 method: Inhale 4s, hold 4s, exhale 4s.\n\n#MentalHealth #StressRelief #FitLifeDaily",
         "image": "https://images.pexels.com/photos/3823039/pexels-photo-3823039.jpeg"
     },
     {
-        "content": "🎯 Set SMART goals: Specific, Measurable, Achievable, Relevant, Time-bound. Write your goal down today!\n\n#GoalSetting #Motivation #FitLifeDaily",
+        "content": "🎯 Set SMART goals: Specific, Measurable, Achievable, Relevant, Time-bound.\n\n#GoalSetting #Motivation #FitLifeDaily",
         "image": "https://images.pexels.com/photos/2581121/pexels-photo-2581121.jpeg"
     },
     {
-        "content": "📱 Download a 7-minute workout app! 7 minutes of high-intensity exercise equals 30 minutes of moderate activity.\n\n#QuickWorkout #FitnessApp #FitLifeDaily",
+        "content": "📱 7 minutes of high-intensity exercise equals 30 minutes of moderate activity!\n\n#QuickWorkout #FitnessApp #FitLifeDaily",
         "image": "https://images.pexels.com/photos/1954524/pexels-photo-1954524.jpeg"
     },
     {
-        "content": "🥑 Slice an avocado with sea salt and chili flakes. Healthy fats, fiber, and potassium in 5 minutes!\n\n#HealthySnacks #CleanEating #FitLifeDaily",
+        "content": "🥑 Avocado with sea salt and chili flakes. Healthy fats, fiber, and potassium in 5 minutes!\n\n#HealthySnacks #CleanEating #FitLifeDaily",
         "image": "https://images.pexels.com/photos/317157/pexels-photo-317157.jpeg"
     },
     {
-        "content": "🔥 Quick HIIT: 20 seconds work / 10 seconds rest x 8 rounds. Burns fat for 24 hours post-workout!\n\n#HIIT #FatBurn #QuickWorkout #FitLifeDaily",
+        "content": "🔥 HIIT: 20 sec work / 10 sec rest x 8 rounds. Burns fat for 24 hours!\n\n#HIIT #FatBurn #QuickWorkout #FitLifeDaily",
         "image": "https://images.pexels.com/photos/2294361/pexels-photo-2294361.jpeg"
     }
 ]
@@ -152,7 +151,6 @@ def generate_posts():
     """Generate posts with images and local videos"""
     all_posts = []
     
-    # Add Image Posts
     for idx, post in enumerate(IMAGE_POSTS, 1):
         all_posts.append({
             'id': f'post{idx:03d}',
@@ -161,13 +159,11 @@ def generate_posts():
             'video_url': ''
         })
     
-    # Get local videos
     video_files = get_created_videos()
     video_count = len(video_files)
     
     if video_count > 0:
         print(f"✅ Found {video_count} videos in videos/ folder")
-        # Add Video Posts with local videos
         for idx, video_post in enumerate(VIDEO_POSTS[:video_count], len(all_posts) + 1):
             all_posts.append({
                 'id': f'post{idx:03d}',
@@ -177,7 +173,6 @@ def generate_posts():
             })
     else:
         print("⚠️ No videos found! Run 'python create_reels.py' first.")
-        # Add fallback text-only video posts
         for idx, video_post in enumerate(VIDEO_POSTS[:10], len(all_posts) + 1):
             all_posts.append({
                 'id': f'post{idx:03d}',
@@ -186,83 +181,45 @@ def generate_posts():
                 'video_url': ''
             })
     
-    # Shuffle
     random.shuffle(all_posts)
-    
-    # Reassign IDs
     for i, post in enumerate(all_posts, 1):
         post['id'] = f'post{i:03d}'
     
     return all_posts
 
-# ============================================
-# SAVE TO CSV
-# ============================================
-
 def save_posts_to_csv(posts, filename='posts.csv'):
-    """Save generated posts to CSV file"""
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['id', 'content', 'image_url', 'video_url'])
         writer.writeheader()
-        
         for post in posts:
-            writer.writerow({
-                'id': post['id'],
-                'content': post['content'],
-                'image_url': post['image_url'],
-                'video_url': post['video_url']
-            })
-    
+            writer.writerow(post)
     print(f"✅ Generated {len(posts)} posts saved to {filename}")
 
 def print_stats(posts):
-    """Print detailed statistics"""
     total = len(posts)
     with_images = sum(1 for p in posts if p['image_url'])
     with_videos = sum(1 for p in posts if p['video_url'])
-    text_only = sum(1 for p in posts if not p['image_url'] and not p['video_url'])
-    
-    print(f"\n📊 Content Statistics:")
-    print(f"   {'=' * 50}")
-    print(f"   Total Posts:      {total}")
-    print(f"   With Images:      {with_images} ({with_images/total*100:.0f}%)")
-    print(f"   With Videos:      {with_videos} ({with_videos/total*100:.0f}%)")
-    print(f"   Text-Only:        {text_only} ({text_only/total*100:.0f}%)")
+    print(f"\n📊 Total Posts: {total}")
+    print(f"   With Images: {with_images}")
+    print(f"   With Videos: {with_videos}")
 
-def print_samples(posts, count=6):
-    """Show sample posts"""
+def print_samples(posts, count=5):
     print(f"\n📌 Sample Posts:")
-    print(f"   {'=' * 55}")
-    
     samples = random.sample(posts, min(count, len(posts)))
     for idx, post in enumerate(samples, 1):
         print(f"\n   [{idx}] {post['id']}")
-        content_preview = post['content'][:60] + "..." if len(post['content']) > 60 else post['content']
-        print(f"   Content: {content_preview}")
-        print(f"   Image:   {'✅' if post['image_url'] else '❌'}")
-        print(f"   Video:   {'✅' if post['video_url'] else '❌'}")
-        print(f"   {'-' * 50}")
-
-# ============================================
-# MAIN
-# ============================================
+        print(f"   Content: {post['content'][:50]}...")
+        print(f"   Image: {'✅' if post['image_url'] else '❌'}")
+        print(f"   Video: {'✅' if post['video_url'] else '❌'}")
 
 if __name__ == "__main__":
     print("🏋️ FitLife Daily - Content Generator")
     print("=" * 65)
-    print(f"📅 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print()
+    print(f"📅 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
-    # Generate posts
     posts = generate_posts()
-    
-    # Save to CSV
     save_posts_to_csv(posts)
-    
-    # Show statistics
     print_stats(posts)
-    
-    # Show sample posts
     print_samples(posts, 5)
     
     print("\n✨ CONTENT GENERATION COMPLETE!")
