@@ -1,22 +1,21 @@
-name: FitLife Daily Auto-Poster
+name: FitLife Daily Auto-Poster (Text-Only)
 
 on:
   schedule:
-    - cron: "0 8,11,14,17,20 * * *"  # 8am, 11am, 2pm, 5pm, 8pm UTC
+    - cron: "0 8,11,14,17,20 * * *"
   workflow_dispatch:
   push:
     branches: [ main ]
 
 permissions:
   contents: write
-  actions: read
 
 jobs:
   post:
     runs-on: ubuntu-latest
     
     steps:
-      - name: 📥 Checkout repository
+      - name: 📥 Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,11 +25,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          cache: 'pip'
       
       - name: 📦 Install dependencies
         run: |
           pip install requests
+      
+      - name: 📝 Check content
+        run: |
+          if [ ! -f "posts.csv" ]; then
+            echo "⚠️ Creating default content..."
+            python content_generator.py
+          fi
       
       - name: 🚀 Post to Facebook
         env:
@@ -39,10 +44,20 @@ jobs:
         run: |
           python fb_poster.py
       
-      - name: 💾 Commit and push updates
+      - name: 💾 Push updates
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
+          git config --local user.name "GitHub Action"
           git add posted_log.txt
-          git diff --staged --quiet || git commit -m "📊 Update posting logs [skip ci]"
-          git push || echo "Push failed, will retry next time"
+          git diff --staged --quiet || git commit -m "📊 Update logs [skip ci]" || true
+          git push origin main --force-with-lease || true
+      
+      - name: 📤 Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            posted_log.txt
+            posts.csv
+          retention-days: 7
