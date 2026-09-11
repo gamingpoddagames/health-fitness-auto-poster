@@ -1,4 +1,4 @@
-name: FitLife Daily Auto-Poster (Text-Only)
+name: FitLife Daily Auto-Poster
 
 on:
   schedule:
@@ -15,49 +15,41 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: 📥 Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: 🐍 Setup Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: |
           pip install requests
       
-      - name: 📝 Check content
+      - name: Generate content if needed
         run: |
-          if [ ! -f "posts.csv" ]; then
-            echo "⚠️ Creating default content..."
+          if [ ! -f "posts.csv" ] || [ ! -s "posts.csv" ]; then
+            echo "Creating new content..."
             python content_generator.py
+          else
+            echo "Content exists"
           fi
       
-      - name: 🚀 Post to Facebook
+      - name: Post to Facebook
         env:
           FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
           FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
         run: |
           python fb_poster.py
       
-      - name: 💾 Push updates
+      - name: Commit and push updates
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add posted_log.txt
-          git diff --staged --quiet || git commit -m "📊 Update logs [skip ci]" || true
+          git config --local user.name "GitHub Action Bot"
+          git add posted_log.txt posts.csv || true
+          git diff --staged --quiet || git commit -m "Update logs [skip ci]" || true
           git push origin main --force-with-lease || true
-      
-      - name: 📤 Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs
-          path: |
-            posted_log.txt
-            posts.csv
-          retention-days: 7
