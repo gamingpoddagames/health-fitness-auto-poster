@@ -1,219 +1,118 @@
 #!/usr/bin/env python3
 """
-FitLife Daily - Content Generator
-Generates posts with generated images and local videos
+FitLife Daily - Content Generator (Text-Only)
+Works without any external dependencies!
 """
 
 import csv
 import random
-import os
-import glob
 from datetime import datetime
 
 # ============================================
-# GET GENERATED IMAGES
+# CONTENT DATABASE (50 unique posts)
 # ============================================
 
-def get_generated_images():
-    """Get list of images created by create_images.py"""
-    images_dir = "images"
-    image_files = []
+POSTS_CONTENT = [
+    # Health Tips (15)
+    "Start your day with 5 minutes of dynamic stretching! Increases blood flow by 30% and reduces injury risk.\n\n#FitnessTips #HealthyLiving #FitLifeDaily",
+    "Add spinach to your morning smoothie! 50% Vitamin K, 20% Iron - and you won't even taste it!\n\n#HealthyEating #Nutrition #FitLifeDaily",
+    "Drink 8 glasses of water daily! Boosts metabolism by 30% and improves skin health.\n\n#Hydration #Wellness #FitLifeDaily",
+    "Get 7-8 hours of quality sleep! 40% faster muscle recovery and balanced hormones.\n\n#SleepWell #Recovery #FitLifeDaily",
+    "3 days strength + 2 days cardio + 2 rest days = the ideal weekly routine!\n\n#WorkoutPlan #Fitness #FitLifeDaily",
+    "Take 5 deep breaths using the 4-4-4 method: Inhale 4s, Hold 4s, Exhale 4s. Stress relief in 60 seconds!\n\n#MentalHealth #StressRelief #FitLifeDaily",
+    "Set SMART goals: Specific, Measurable, Achievable, Relevant, Time-bound. Write your goal down today!\n\n#GoalSetting #Motivation #FitLifeDaily",
+    "7 minutes of high-intensity exercise = 30 minutes of moderate activity. No excuses!\n\n#QuickWorkout #Fitness #FitLifeDaily",
+    "Avocado with sea salt and chili flakes. Healthy fats, fiber, and potassium in 5 minutes!\n\n#HealthySnacks #CleanEating #FitLifeDaily",
+    "HIIT: 20 sec work / 10 sec rest x 8 rounds. Burns fat for 24 hours post-workout!\n\n#HIIT #FatBurn #FitLifeDaily",
+    "Walk 10 minutes after each meal! Improves digestion and reduces blood sugar spikes by 20%.\n\n#HealthyHabits #Walking #FitLifeDaily",
+    "Eat protein within 30 minutes post-workout! 20-30g protein for optimal muscle recovery.\n\n#Nutrition #PostWorkout #FitLifeDaily",
+    "Track your progress weekly! Measurements, photos, workout logs - celebrate every win!\n\n#Progress #FitnessJourney #FitLifeDaily",
+    "Create a playlist with 120-140 BPM music! Increases workout performance by 15%.\n\n#WorkoutMusic #Motivation #FitLifeDaily",
+    "Replace running shoes every 300-500 miles! Prevents injury and joint pain.\n\n#FitnessGear #Safety #FitLifeDaily",
     
-    if os.path.exists(images_dir):
-        image_files = glob.glob(f"{images_dir}/*.png")
-        
-        csv_file = f"{images_dir}/image_list.csv"
-        if os.path.exists(csv_file):
-            try:
-                with open(csv_file, 'r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if os.path.exists(row['file']):
-                            image_files.append(row['file'])
-            except:
-                pass
+    # Motivational Quotes (15)
+    "The only bad workout is the one that didn't happen. Even 10 minutes counts!\n\n#Motivation #FitnessMindset #FitLifeDaily",
+    "Your body can do it. Your mind is the one that needs convincing. Push through the doubt!\n\n#Mindset #BelieveInYourself #FitLifeDaily",
+    "Discipline equals freedom. Show up every day. Consistency is the real superpower!\n\n#Discipline #Consistency #FitLifeDaily",
+    "Don't wish for it. Work for it. Every rep, every step brings you closer.\n\n#Grind #HardWork #FitLifeDaily",
+    "Motivation gets you started. Habit keeps you going. Build systems, not just goals.\n\n#Habits #Success #FitLifeDaily",
+    "Progress, not perfection. Every step counts. Small improvements = massive results.\n\n#Progress #SelfImprovement #FitLifeDaily",
+    "You are stronger than you think. Prove it to yourself. Trust your resilience.\n\n#Strength #Believe #FitLifeDaily",
+    "The pain you feel today is the strength you'll feel tomorrow. Growth requires discomfort!\n\n#NoPainNoGain #Growth #FitLifeDaily",
+    "Small daily improvements equal massive results over time. 1% daily = 37x in a year!\n\n#Consistency #SmallWins #FitLifeDaily",
+    "Your only competition is the person in the mirror. Are you better than yesterday?\n\n#SelfImprovement #Focus #FitLifeDaily",
+    "Success isn't given, it's earned. Thousands of hours of work behind every achievement.\n\n#Success #HardWork #FitLifeDaily",
+    "When you feel like quitting, remember why you started. Keep going!\n\n#KeepGoing #Perseverance #FitLifeDaily",
+    "Make yourself proud. This journey is about you. Never give up!\n\n#Pride #SelfLove #FitLifeDaily",
+    "The choices you make today shape the person you become tomorrow.\n\n#Choices #FutureYou #FitLifeDaily",
+    "One day, or Day One. You decide. Start today!\n\n#DayOne #NewBeginnings #FitLifeDaily",
     
-    return list(set(image_files))
-
-# ============================================
-# GET GENERATED VIDEOS
-# ============================================
-
-def get_created_videos():
-    """Get list of videos created by create_reels.py"""
-    videos_dir = "videos"
-    video_files = []
+    # Fitness Facts (10)
+    "Walking 10,000 steps burns 400-500 calories! Park farther, take stairs, walk after lunch.\n\n#Walking #FitnessFacts #FitLifeDaily",
+    "Regular cardio reduces heart disease risk by 30%! Just 30 minutes, 5x weekly.\n\n#Cardio #HeartHealth #FitLifeDaily",
+    "Muscle weighs more than fat but takes up less space. The scale may not move but your clothes get looser!\n\n#BodyComposition #FitnessTruth #FitLifeDaily",
+    "Stretching increases blood flow to muscles by 30%. Improves flexibility and prevents injury.\n\n#Stretching #Flexibility #FitLifeDaily",
+    "Drinking 500ml of water boosts metabolism by 30% for one hour! Stay hydrated!\n\n#Hydration #Metabolism #FitLifeDaily",
+    "Laughter burns up to 40 calories in 15 minutes! Watch a funny video and enjoy!\n\n#Laughter #Wellness #FitLifeDaily",
+    "It takes 21 days to form a new habit. Commit for 3 weeks and it becomes automatic!\n\n#HabitFormation #Consistency #FitLifeDaily",
+    "After 40, protein needs increase to 1.2g per kg of body weight. Prioritize protein!\n\n#Protein #Nutrition #HealthyAging #FitLifeDaily",
+    "Rest days prevent burnout and injury. Your muscles grow during rest, not during training!\n\n#RestDays #Recovery #FitLifeDaily",
+    "A 30-minute workout 5x weekly beats a 2-hour workout once a week. Consistency is everything!\n\n#Consistency #FitnessJourney #FitLifeDaily",
     
-    if os.path.exists(videos_dir):
-        video_files = glob.glob(f"{videos_dir}/*.mp4")
-        
-        csv_file = f"{videos_dir}/reel_list.csv"
-        if os.path.exists(csv_file):
-            try:
-                with open(csv_file, 'r', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        if os.path.exists(row['file']):
-                            video_files.append(row['file'])
-            except:
-                pass
-    
-    return list(set(video_files))
-
-# ============================================
-# VIDEO POST CONTENT
-# ============================================
-
-VIDEO_POSTS = [
-    {
-        "content": "🎬 **Intense Workout Session!** Watch this to get inspired.\n\nRemember: 'The only bad workout is the one that didn't happen.'\n\nTurn on sound for maximum motivation! 🎵\n\n#WorkoutMotivation #IntenseWorkout #FitLifeDaily",
-    },
-    {
-        "content": "🏋️ **Master Your Squat Form!**\n\nKey points:\n✅ Feet shoulder-width apart\n✅ Chest up, back straight\n✅ Push through your heels\n✅ Don't let knees cave in\n\nPerfect your form for better results and safety!\n\n#SquatForm #FitnessTips #Gym #FitLifeDaily",
-    },
-    {
-        "content": "⚡ **4-Minute HIIT for Busy People!**\n\n20 seconds work / 10 seconds rest\n8 rounds - only 4 minutes!\n\nChoose any exercise:\n🔹 Jump Squats\n🔹 Burpees\n🔹 Mountain Climbers\n🔹 High Knees\n\nNo excuses - do this now!\n\n#HIIT #QuickWorkout #FatBurn #FitLifeDaily",
-    },
-    {
-        "content": "🌅 **5-Minute Morning Stretch**\n\nWake up your body:\n1️⃣ Neck rolls\n2️⃣ Arm circles\n3️⃣ Torso twists\n4️⃣ Leg swings\n5️⃣ Cat-cow\n6️⃣ Child's pose\n\nStart your day with flexibility!\n\n#MorningStretch #Flexibility #Wellness #FitLifeDaily",
-    },
-    {
-        "content": "🧘 **10-Minute Yoga Flow**\n\nFollow along for:\n🔹 Flexibility\n🔹 Stress relief\n🔹 Better sleep\n🔹 Mind-body connection\n\nPoses: Downward dog, Warrior I, Warrior II, Pigeon, Savasana\n\n#Yoga #Mindfulness #Flexibility #FitLifeDaily",
-    },
-    {
-        "content": "🏃 **20-Minute Cardio Burn!**\n\nWarm up (3 min) → Workout (15 min) → Cool down (2 min)\n\nExercises:\n🔹 Jumping jacks\n🔹 High knees\n🔹 Butt kicks\n🔹 Mountain climbers\n🔹 Burpees\n\nBurn 200+ calories!\n\n#CardioWorkout #FatLoss #Fitness #FitLifeDaily",
-    },
-    {
-        "content": "💪 **Full Body Home Workout**\n\nNo equipment needed:\n1️⃣ Squats - 15 reps\n2️⃣ Push-ups - 10 reps\n3️⃣ Lunges - 12 each\n4️⃣ Plank - 30 sec\n5️⃣ Glute bridges - 15 reps\n6️⃣ Mountain climbers - 30 sec\n\nRepeat 3x. Do this daily!\n\n#HomeWorkout #FullBodyWorkout #NoEquipment #FitLifeDaily",
-    },
-    {
-        "content": "🧍 **Fix Your Posture in 5 Minutes!**\n\nExercises:\n1️⃣ Wall angels - 15 reps\n2️⃣ Chin tucks - 15 reps\n3️⃣ Scapular retractions - 15 reps\n4️⃣ Bird-dog - 10 each side\n5️⃣ Cat-cow - 10 reps\n\nDo daily for better posture and less back pain!\n\n#Posture #BackPainRelief #Exercise #FitLifeDaily",
-    },
-    {
-        "content": "🔥 **The Secret to Success!**\n\n'Success isn't given, it's earned. Behind every achievement are thousands of hours of work. Put in the time and you'll get the reward.'\n\nYour future self is counting on you. Keep going! 💪\n\n#Motivation #Success #Fitness #FitLifeDaily",
-    },
-    {
-        "content": "🧘 **Evening Yoga Relaxation**\n\nWind down with these calming poses:\n🔹 Child's Pose\n🔹 Cat-Cow\n🔹 Pigeon Pose\n🔹 Savasana\n\nImprove sleep quality and reduce stress!\n\n#Yoga #Relaxation #BetterSleep #FitLifeDaily",
-    },
-    {
-        "content": "🔥 **Burn Fat with This HIIT Routine!**\n\n30 seconds work / 15 seconds rest\n8 exercises = 6 minutes\n\nFull body fat burn in minimal time!\n\n#HIIT #FatBurn #QuickWorkout #FitLifeDaily",
-    },
-    {
-        "content": "🏃 **Run Technique Tips**\n\nImprove your running form:\n✅ Lean slightly forward\n✅ Land mid-foot\n✅ Keep cadence high\n✅ Swing arms forward\n✅ Breathe rhythmically\n\nRun faster, longer, injury-free!\n\n#Running #Technique #Fitness #FitLifeDaily",
-    },
-    {
-        "content": "💪 **Upper Body Strength Workout**\n\nExercises:\n1️⃣ Push-ups - 12 reps\n2️⃣ Pull-ups (or rows) - 8 reps\n3️⃣ Overhead Press - 10 reps\n4️⃣ Bicep Curls - 12 reps\n5️⃣ Tricep Dips - 12 reps\n\nBuild a stronger upper body today!\n\n#UpperBody #StrengthTraining #FitLifeDaily",
-    },
-    {
-        "content": "🦵 **Leg Day Workout**\n\nBuild powerful legs:\n1️⃣ Squats - 15 reps\n2️⃣ Lunges - 12 each\n3️⃣ Deadlifts - 10 reps\n4️⃣ Calf Raises - 20 reps\n5️⃣ Glute Bridges - 15 reps\n\nStrong legs = strong foundation!\n\n#LegDay #LowerBody #Strength #FitLifeDaily",
-    },
-    {
-        "content": "🧘 **Morning Meditation Guide**\n\nStart your day with mindfulness:\n1️⃣ Find a quiet space\n2️⃣ Sit comfortably\n3️⃣ Focus on breath\n4️⃣ 5-10 minutes\n5️⃣ Set intentions\n\nReduce anxiety and stay focused!\n\n#Meditation #Mindfulness #Wellness #FitLifeDaily",
-    },
-    {
-        "content": "🥗 **Healthy Meal Prep Ideas**\n\nTips for success:\n✅ Plan your meals\n✅ Shop with a list\n✅ Batch cook proteins\n✅ Use containers\n✅ Include 5 colors\n\nSave time and eat healthy all week!\n\n#MealPrep #HealthyEating #Nutrition #FitLifeDaily",
-    },
-    {
-        "content": "🎬 **Quick Cardio Blast!** Get your heart rate up with this intense cardio session.\n\nPerfect for busy days - just 10 minutes to burn calories and boost your mood!\n\n#Cardio #QuickWorkout #FatBurn #FitLifeDaily",
-    },
-    {
-        "content": "🏋️ **Perfect Deadlift Form**\n\nKey points:\n✅ Bar over mid-foot\n✅ Hinge at hips\n✅ Keep back straight\n✅ Drive through heels\n✅ Lock out at top\n\nMaster this compound lift for strength gains!\n\n#Deadlift #Form #StrengthTraining #FitLifeDaily",
-    }
+    # Workout Guides (10)
+    "Beginner Bodyweight Workout (15 min): 10 squats, 10 push-ups, 10 lunges, 20s plank, 10 glute bridges. Repeat 3x!\n\n#Workout #Bodyweight #FitLifeDaily",
+    "20-Minute Cardio Circuit: 1 min jumping jacks, 1 min high knees, 30s burpees, 30s rest. Repeat 5x!\n\n#Cardio #HIIT #FitLifeDaily",
+    "30-Minute Dumbbell Workout: Squats 12x3, Rows 12x3, Press 10x3, Lunges 10x3, Curls 12x3.\n\n#Dumbbells #StrengthTraining #FitLifeDaily",
+    "5-Minute Morning Routine: Neck rolls, shoulder shrugs, arm circles, torso twists, squats, jumping jacks!\n\n#MorningRoutine #WakeUp #FitLifeDaily",
+    "3-Minute Office Break: Chair squats 10, desk push-ups 10, leg raises 10, neck stretches 30s!\n\n#OfficeWorkout #ActiveBreak #FitLifeDaily",
+    "10-Minute Core Workout: Plank 45s, bicycle crunches 15, Russian twists 15, leg raises 12, bird-dog 10!\n\n#CoreWorkout #Abs #FitLifeDaily",
+    "10-Minute Full Body Stretch: Forward fold, downward dog, cobra, cat-cow, quad stretch, hamstring stretch!\n\n#Stretching #Flexibility #FitLifeDaily",
+    "4-Minute Tabata: One exercise, 8 rounds. 20s MAX effort, 10s rest. Squats, push-ups, burpees, or climbers!\n\n#Tabata #HIIT #FitLifeDaily",
+    "5-Minute Evening Routine: Deep breathing 1min, neck stretches 30s, child's pose 1min, legs up wall 2min!\n\n#EveningRoutine #Relaxation #FitLifeDaily",
+    "Full Body Home Workout: Squats 15, push-ups 10, lunges 12, plank 30s, glute bridges 15, mountain climbers 30s!\n\n#HomeWorkout #NoEquipment #FitLifeDaily",
 ]
 
-# ============================================
-# GENERATE POSTS
-# ============================================
+def generate_posts(count=50):
+    """Generate text-only posts"""
+    posts = []
+    for i, content in enumerate(POSTS_CONTENT[:count], 1):
+        posts.append({
+            'id': f'post{i:03d}',
+            'content': content,
+            'image_url': '',
+            'video_url': ''
+        })
+    return posts
 
-def generate_posts():
-    """Generate posts with generated images and local videos"""
-    all_posts = []
-    
-    # Get generated images
-    image_files = get_generated_images()
-    image_count = len(image_files)
-    
-    if image_count > 0:
-        print(f"✅ Found {image_count} images in images/ folder")
-        for idx, image_file in enumerate(image_files, 1):
-            # Create simple content for image
-            title = os.path.basename(image_file).replace("_", " ").replace(".png", "")
-            all_posts.append({
-                'id': f'post{idx:03d}',
-                'content': f"🏋️ FitLife Daily\n\nCheck out this fitness tip!\n\n#FitLifeDaily #Fitness #Health",
-                'image_url': image_file,
-                'video_url': ''
-            })
-    else:
-        print("⚠️ No images found! Run 'python create_images.py' first.")
-        # Add fallback text-only posts
-        for idx in range(1, 11):
-            all_posts.append({
-                'id': f'post{idx:03d}',
-                'content': f"🏋️ FitLife Daily\n\nDay {idx}: Stay consistent!\n\n#FitLifeDaily #Fitness #Health",
-                'image_url': '',
-                'video_url': ''
-            })
-    
-    # Get videos
-    video_files = get_created_videos()
-    video_count = len(video_files)
-    
-    if video_count > 0:
-        print(f"✅ Found {video_count} videos in videos/ folder")
-        for idx, video_post in enumerate(VIDEO_POSTS[:video_count], len(all_posts) + 1):
-            all_posts.append({
-                'id': f'post{idx:03d}',
-                'content': video_post['content'],
-                'image_url': '',
-                'video_url': video_files[idx - 1] if (idx - 1) < len(video_files) else ''
-            })
-    else:
-        print("⚠️ No videos found! Run 'python create_reels.py' first.")
-    
-    # Shuffle
-    random.shuffle(all_posts)
-    
-    # Reassign IDs
-    for i, post in enumerate(all_posts, 1):
-        post['id'] = f'post{i:03d}'
-    
-    return all_posts
-
-def save_posts_to_csv(posts, filename='posts.csv'):
+def save_posts(posts, filename='posts.csv'):
+    """Save posts to CSV"""
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=['id', 'content', 'image_url', 'video_url'])
         writer.writeheader()
-        for post in posts:
-            writer.writerow(post)
-    print(f"✅ Generated {len(posts)} posts saved to {filename}")
+        writer.writerows(posts)
+    print(f"Generated {len(posts)} posts saved to {filename}")
 
 def print_stats(posts):
     total = len(posts)
-    with_images = sum(1 for p in posts if p['image_url'])
-    with_videos = sum(1 for p in posts if p['video_url'])
-    print(f"\n📊 Total Posts: {total}")
-    print(f"   With Images: {with_images}")
-    print(f"   With Videos: {with_videos}")
+    print(f"\nTotal Posts: {total}")
+    print(f"Type: Text-only (no external dependencies)")
 
-def print_samples(posts, count=5):
-    print(f"\n📌 Sample Posts:")
-    samples = random.sample(posts, min(count, len(posts)))
-    for idx, post in enumerate(samples, 1):
-        print(f"\n   [{idx}] {post['id']}")
-        print(f"   Content: {post['content'][:50]}...")
-        print(f"   Image: {'✅' if post['image_url'] else '❌'}")
-        print(f"   Video: {'✅' if post['video_url'] else '❌'}")
+def print_samples(posts, count=3):
+    print(f"\nSample Posts:")
+    for i, post in enumerate(posts[:count], 1):
+        print(f"\n   [{i}] {post['id']}")
+        preview = post['content'][:70] + "..." if len(post['content']) > 70 else post['content']
+        print(f"   {preview}")
 
 if __name__ == "__main__":
-    print("🏋️ FitLife Daily - Content Generator")
-    print("=" * 65)
-    print(f"📅 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    print("FitLife Daily - Content Generator")
+    print("=" * 55)
+    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    posts = generate_posts()
-    save_posts_to_csv(posts)
+    posts = generate_posts(50)
+    save_posts(posts)
     print_stats(posts)
-    print_samples(posts, 5)
+    print_samples(posts, 3)
     
-    print("\n✨ CONTENT GENERATION COMPLETE!")
-    print("🚀 Run 'python fb_poster.py' to start posting.")
+    print(f"\nGenerated {len(posts)} posts ready to publish!")
+    print("Run 'python fb_poster.py' to start posting")
